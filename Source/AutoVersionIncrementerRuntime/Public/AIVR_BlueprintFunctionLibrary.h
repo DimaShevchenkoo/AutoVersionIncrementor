@@ -12,6 +12,8 @@ class AUTOVERSIONINCREMENTERRUNTIME_API UAIVR_BlueprintFunctionLibrary : public 
 	GENERATED_BODY()
 	
 public:
+	static bool IsVersionLike(const FString& Name);
+
 	UFUNCTION(BlueprintCallable)
 	static FString GetProjectVersion();
 };

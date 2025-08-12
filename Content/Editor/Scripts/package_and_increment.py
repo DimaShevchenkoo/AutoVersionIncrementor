@@ -10,6 +10,15 @@ IGNORED_PREFIXES = [
     "LogPython"
 ]
 
+def create_version_marker(build_root: str, version: str):
+    try:
+        marker_path = os.path.join(build_root, version)
+        with open(marker_path, "w", encoding="utf-8") as f:
+            f.write("")
+        unreal.log(f"[UAT] Version marker created: {marker_path}")
+    except Exception as e:
+        unreal.log_warning(f"[UAT] Failed to create version marker: {e}")
+
 def should_log_line(line: str) -> bool:
     return not any(line.startswith(prefix) for prefix in IGNORED_PREFIXES)
 
@@ -20,7 +29,8 @@ def process_queues(delta_time):
         status, archive_path, platform = status_queue.get()
         if status == "success":
             new_ver = increment_version()
-            rename_build_folder(archive_path, platform)
+            new_build_dir = rename_build_folder(archive_path, platform)
+            create_version_marker(new_build_dir, new_ver)
             unreal.log(f"[UAT] Packaging finished successfully. Version updated to {new_ver}")
         elif status == "fail":
             unreal.log_error("[UAT] Packaging failed! Version not incremented.")
