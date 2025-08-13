@@ -2,54 +2,62 @@
 
 #include "AIVR_BlueprintFunctionLibrary.h"
 
-bool UAIVR_BlueprintFunctionLibrary::IsVersionLike(const FString& Name)
+bool UAIVR_BlueprintFunctionLibrary::TryReadVersionTxtAt(const FString& Dir, FString& OutVersion)
 {
-	TArray<FString> Parts;
-	Name.ParseIntoArray(Parts, TEXT("."), true);
-	if (Parts.Num() < 2 || Parts.Num() > 5) return false;
-	for (const FString& P : Parts)
+	const FString Path = FPaths::Combine(Dir, TEXT("version.txt"));
+	if (FPaths::FileExists(Path))
 	{
-		if (P.IsEmpty() || !P.IsNumeric()) return false;
+		FString Content;
+		if (FFileHelper::LoadFileToString(Content, *Path))
+		{
+			Content.TrimStartAndEndInline();
+			if (!Content.IsEmpty())
+			{
+				OutVersion = Content;
+				return true;
+			}
+		}
 	}
-	return true;
+	return false;
 }
 
 FString UAIVR_BlueprintFunctionLibrary::GetProjectVersion()
 {
 #if !WITH_EDITOR
-	FString Dir = FPaths::ConvertRelativePathToFull(FPaths::LaunchDir());
-	for (int32 Depth = 0; Depth < 4 && !Dir.IsEmpty(); ++Depth)
 	{
-		TArray<FString> Files;
-		IFileManager::Get().FindFiles(Files, *(Dir / TEXT("*")), /*Files=*/true, /*Dirs=*/false);
-		for (const FString& FileName : Files)
+		FString Ver;
+		if (TryReadVersionTxtAt(FPaths::LaunchDir(), Ver))
 		{
-			if (IsVersionLike(FileName))
+			return Ver;
+		}
+	}
+
+	{
+		FString Dir = FPaths::ConvertRelativePathToFull(FPaths::LaunchDir());
+		for (int32 Depth = 0; Depth < 3; ++Depth)
+		{
+			const FString Parent = FPaths::GetPath(Dir);
+			if (Parent.IsEmpty() || Parent == Dir) break;
+			Dir = Parent;
+
+			FString Ver;
+			if (TryReadVersionTxtAt(Dir, Ver))
 			{
-				return FileName;
+				return Ver;
 			}
 		}
-
-		const FString Parent = FPaths::GetPath(Dir);
-		if (Parent.IsEmpty() || Parent == Dir) break;
-		Dir = Parent;
 	}
-	
 #endif
-	
-	FString IniPath = FPaths::Combine(FPaths::ProjectConfigDir(), TEXT("DefaultGame.ini"));
-	FConfigFile ConfigFile;
-	ConfigFile.Read(IniPath);
 
-	const FString SectionName(TEXT("/Script/EngineSettings.GeneralProjectSettings"));
-	const FName KeyName(TEXT("ProjectVersion"));
-
-	if (FConfigSection* Section = ConfigFile.Find(SectionName))
+	const FString IniPath = FPaths::Combine(FPaths::ProjectConfigDir(), TEXT("DefaultGame.ini"));
+	FString Value;
+	if (GConfig->GetString(
+			TEXT("/Script/EngineSettings.GeneralProjectSettings"),
+			TEXT("ProjectVersion"),
+			Value,
+			IniPath))
 	{
-		if (FConfigValue* Value = Section->Find(KeyName))
-		{
-			return Value->GetValue();
-		}
+		return Value;
 	}
 
 	return TEXT("Unknown");

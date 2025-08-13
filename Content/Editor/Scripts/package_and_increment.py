@@ -12,12 +12,26 @@ IGNORED_PREFIXES = [
 
 def create_version_marker(build_root: str, version: str):
     try:
-        marker_path = os.path.join(build_root, version)
-        with open(marker_path, "w", encoding="utf-8") as f:
-            f.write("")
-        unreal.log(f"[UAT] Version marker created: {marker_path}")
+            marker_path = os.path.join(build_root, "version.txt")
+            with open(marker_path, "w", encoding="utf-8") as f:
+                f.write(version + "\n")
+            unreal.log(f"[UAT] Version file written: {marker_path}")
+
+            bin_dir = os.path.join(build_root, "Binaries")
+            if os.path.isdir(bin_dir):
+                for d in os.listdir(bin_dir):
+                    exe_dir = os.path.join(bin_dir, d)
+                    if os.path.isdir(exe_dir):
+                        try:
+                            dst = os.path.join(exe_dir, "version.txt")
+                            with open(dst, "w", encoding="utf-8") as f2:
+                                f2.write(version + "\n")
+                            unreal.log(f"[UAT] Version file copied: {dst}")
+                        except Exception as e:
+                            unreal.log_warning(f"[UAT] Failed to copy version file to {exe_dir}: {e}")
+                        break
     except Exception as e:
-        unreal.log_warning(f"[UAT] Failed to create version marker: {e}")
+            unreal.log_warning(f"[UAT] Failed to create version file: {e}")
 
 def should_log_line(line: str) -> bool:
     return not any(line.startswith(prefix) for prefix in IGNORED_PREFIXES)
