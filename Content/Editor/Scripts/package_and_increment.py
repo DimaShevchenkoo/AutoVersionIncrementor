@@ -53,6 +53,13 @@ def increment_version():
     ini_path = os.path.join(unreal.Paths.project_config_dir(), "DefaultGame.ini")
     config = configparser.ConfigParser()
     config.optionxform = str
+
+    if not os.path.exists(ini_path):
+        unreal.log_warning(f"[UAT] Config file not found, creating new one: {ini_path}")
+        with open(ini_path, 'w', encoding='utf-8') as f:
+            f.write("[/Script/EngineSettings.GeneralProjectSettings]\n")
+            f.write("ProjectVersion=1.0.0.0\n")
+
     config.read(ini_path)
 
     section = "/Script/EngineSettings.GeneralProjectSettings"
@@ -81,7 +88,7 @@ def increment_version():
     new_version = '.'.join(map(str, parts))
     config[section]['ProjectVersion'] = new_version
 
-    with open(ini_path, 'w') as configfile:
+    with open(ini_path, 'w', encoding="utf-8") as configfile:
         config.write(configfile)
 
     unreal.SystemLibrary.execute_console_command(None, "config reload")
